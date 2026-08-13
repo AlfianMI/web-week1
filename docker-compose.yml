@@ -1,0 +1,49 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: devops-week1-app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - backend-net
+
+  db:
+    image: postgres:15-alpine
+    container_name: devops-week1-db
+    environment:
+      POSTGRES_USER: devops
+      POSTGRES_PASSWORD: devops_secret
+      POSTGRES_DB: startup_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devops -d startup_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-net
+
+  redis:
+    image: redis:alpine
+    container_name: devops-week1-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - backend-net
+
+volumes:
+  db-data:
+
+networks:
+  backend-net:
+    driver: bridge
