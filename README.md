@@ -100,3 +100,157 @@ npm start
 - `POST /api/v1/products`: Membuat produk baru (Invalidates List Cache)
 - `PUT /api/v1/products/:id`: Memperbarui data produk (Invalidates List & Item Cache)
 - `DELETE /api/v1/products/:id`: Menghapus produk (Invalidates List & Item Cache)
+
+---
+
+# DevOps Setup
+
+Menjelaskan Konfigurasi DevOps untuk menjalankan aplikasi menggunakan Docker.
+
+## Prerequisites
+
+Pastikan sistem telah memiliki:
+
+- Docker
+- Docker Compose
+- Bash
+- Git
+
+Verifikasi instalasi:
+
+```bash
+docker --version
+docker compose version
+git --version
+bash --version
+
+#Berikut Alur pengerjaan Project Week 1
+
+1. System Monitoring
+
+Script monitoring tersedia di:
+
+scripts/system-monitor.sh
+
+Script melakukan pemeriksaan:
+
+Tanggal dan waktu eksekusi.
+Penggunaan disk pada root partition /.
+Peringatan jika penggunaan disk melebihi 80%.
+Status service Docker.
+
+Menjalankan script:
+
+//bash
+chmod +x scripts/system-monitor.sh
+./scripts/system-monitor.sh
+
+Output log disimpan di:
+
+/tmp/sys-monitor.log
+
+Melihat log:
+//bash
+cat /tmp/sys-monitor.log
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+2. Docker Image
+
+Aplikasi menggunakan Docker Multi-Stage Build.
+
+Build image:
+//bash
+docker build -t devops-week1-app:v1.0 .
+
+Melihat image:
+//bash
+docker images devops-week1-app:v1.0
+
+Memeriksa ukuran image:
+//bash
+docker image inspect devops-week1-app:v1.0 --format '{{.Size}}' | numfmt --to=iec
+
+Hasil pengujian image:
+
+44 MB
+
+Image dijalankan menggunakan user non-root.
+
+Verifikasi:
+//bash
+docker run --rm devops-week1-app:v1.0 whoami
+
+Output:
+
+node
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+3. Docker Compose
+
+Docker Compose menjalankan tiga service:
+-app
+-db
+-redis
+
+Menjalankan seluruh stack:
+//bash
+docker compose up -d --build
+
+Melihat status service:
+//bash
+docker compose ps
+
+Melihat log aplikasi:
+//bash
+docker compose logs app
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+4. Health Check
+
+Aplikasi menyediakan endpoint:
+
+GET /health/deep
+
+Pengujian:
+//bash
+curl http://localhost:3000/health/deep ->> Endpoint memeriksa koneksi PostgreSQL dan Redis.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+5. Database Persistence
+
+PostgreSQL menggunakan named volume:
+
+db-data
+
+Volume digunakan agar data database tetap tersimpan ketika container dihentikan dan dibuat kembali.
+
+Pengujian persistence:
+//bash
+docker compose down
+//bash
+docker compose up -d
+
+Setelah container dibuat kembali, data pada database tetap tersedia karena volume tidak dihapus.
+Note : Jangan menggunakan 'docker compose down -v' ketika ingin mempertahankan data database.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+6. Environment Configuration
+
+File .env digunakan untuk konfigurasi runtime dan tidak di-commit ke repository.
+
+Contoh konfigurasi Docker Compose:
+
+DB_HOST=db
+DB_PORT=5432
+DB_USER=devops
+DB_NAME=startup_db
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+Service db dan redis diakses menggunakan nama service Docker melalui network backend-net, bukan menggunakan localhost
