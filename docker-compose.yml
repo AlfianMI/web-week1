@@ -20,9 +20,9 @@ services:
     image: postgres:15-alpine
     container_name: devops-week1-db
     environment:
-      POSTGRES_USER: devops
-      POSTGRES_PASSWORD: devops_secret
-      POSTGRES_DB: startup_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
