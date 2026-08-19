@@ -43,6 +43,7 @@ services:
 
 volumes:
   db-data:
+    name: web_db-data
 
 networks:
   backend-net:
