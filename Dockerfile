@@ -13,6 +13,11 @@ FROM node:18-alpine
 
 RUN apk update && apk upgrade
 
+# npm tidak dibutuhkan saat runtime
+RUN rm -rf /usr/local/lib/node_modules/npm \
+           /usr/local/lib/node_modules/corepack \
+           /opt/yarn-v1.22.22
+
 WORKDIR /app
 
 COPY --from=dependencies /app/node_modules ./node_modules
