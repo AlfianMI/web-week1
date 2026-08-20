@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "lint": "eslint .",
+    "test": "jest"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -16,7 +18,10 @@
     "morgan": "^1.10.0",
     "pg": "^8.11.5"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "jest": "^30.4.2"
+  },
   "engines": {
     "node": ">=18.0.0"
   }
