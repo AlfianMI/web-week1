@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - feature/week2-cicd-setup
 
   pull_request:
     branches:
