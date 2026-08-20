@@ -73,9 +73,10 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: '1'      
 
-  build-and-push:
+  build-and-publish:
     name: Build & Push Docker Image
     needs: security-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
     permissions:
@@ -100,9 +101,11 @@ jobs:
           images: ghcr.io/${{ github.repository }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
