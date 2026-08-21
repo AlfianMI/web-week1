@@ -642,6 +642,22 @@ Setiap workflow run akan menampilkan status:
 
 **Build & Publish** serta **Release Automation** hanya berjalan ketika workflow dijalankan melalui push ke branch `main`, sesuai dengan konfigurasi pipeline.
 
+Test push menggunakan branch dev untuk mentrigger git action dan workflow berjalan dengan lancar namun build & push image serta smoke test& Release ter-skip
+
+✅ Lint & Test - Node 18.x
+✅ Lint & Test - Node 20.x
+✅ Security Scan
+⏭️ Build & Push Docker Image
+⏭️ Smoke Test & Release
+
+Test push menggunakan branch main untuk mentrigger git action dan workflow berjalan dengan lancar
+
+✅ Lint & Test - Node 18.x
+✅ Lint & Test - Node 20.x
+✅ Security Scan
+✅ Build & Push Docker Image
+✅ Smoke Test & Release
+
 ---
 
 # Git Workflow
