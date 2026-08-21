@@ -138,14 +138,14 @@ jobs:
 
       - name: Pull published Docker image
         run: |
-          docker pull ghcr.io/${{ github.repository }}:main
+          docker pull ghcr.io/${GITHUB_REPOSITORY,,}:main
 
       - name: Run application
         run: |
           docker run -d \
             --name web2-release \
             -p ${{ secrets.APP_PORT }}:${{ secrets.APP_PORT }} \
-            ghcr.io/${{ github.repository }}:main
+            ghcr.io/${GITHUB_REPOSITORY,,}:main
 
       - name: Run smoke test
         run: |
