@@ -109,3 +109,50 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    name: Smoke Test & Release
+    needs: build-and-publish
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull published Docker image
+        run: |
+          docker pull ghcr.io/${{ github.repository }}:main
+
+      - name: Run application
+        run: |
+          docker run -d \
+            --name web2-release \
+            -p ${{ secrets.APP_PORT }}:${{ secrets.APP_PORT }} \
+            ghcr.io/${{ github.repository }}:main
+
+      - name: Run smoke test
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh http://localhost:${{ secrets.APP_PORT }}/health
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Release v1.0.${{ github.run_number }}
+          generate_release_notes: true
