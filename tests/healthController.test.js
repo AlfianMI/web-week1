@@ -3,19 +3,19 @@ const HealthController = require('../src/controllers/healthController');
 describe('HealthController', () => {
   describe('getBasicHealth', () => {
     it('should return basic health status', () => {
-      const req = {};
       const res = {
+        status: jest.fn().mockReturnThis(),
         json: jest.fn(),
       };
 
-      HealthController.getBasicHealth(req, res);
+      HealthController.getBasicHealth({}, res);
 
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: 'UP',
-          service: 'startup-multi-service-api',
-        })
-      );
+      expect(res.status).toHaveBeenCalledWith(200);
+
+      expect(res.json).toHaveBeenCalledWith({
+        status: 'healthy',
+        week: 3,
+      });
     });
   });
 });

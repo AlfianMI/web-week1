@@ -3,10 +3,9 @@ const { testRedisConnection } = require('../config/redis');
 
 class HealthController {
   static getBasicHealth(req, res) {
-    res.json({
-      status: 'UP',
-      timestamp: new Date().toISOString(),
-      service: 'startup-multi-service-api',
+    res.status(200).json({
+      status: 'healthy',
+      week: 3,
     });
   }
 
