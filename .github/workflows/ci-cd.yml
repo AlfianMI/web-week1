@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - feature/week3-aws-terraform
 
   pull_request:
     branches:
@@ -70,87 +71,132 @@ jobs:
           image-ref: web2-app:security-scan
           format: table
           severity: HIGH,CRITICAL
-          exit-code: '1'      
+          exit-code: '1'
 
   build-and-publish:
-    name: Build & Push Docker Image
+    name: Build & Push Docker Image to ECR
     needs: security-scan
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
-      packages: write
+      id-token: write
+
+    env:
+      AWS_REGION: ap-southeast-1
+      ECR_REGISTRY: 992382472679.dkr.ecr.ap-southeast-1.amazonaws.com
+      ECR_REPOSITORY: alfianmi-bootcamp-app
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          role-to-assume: arn:aws:iam::992382472679:role/github-actions-ecr-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  release:
-    name: Smoke Test & Release
+  deploy:
+    name: Deploy to EC2
     needs: build-and-publish
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
-    environment:
-      name: production
+    permissions:
+      contents: read
+
+    env:
+      AWS_REGION: ap-southeast-1
+      ECR_REGISTRY: 992382472679.dkr.ecr.ap-southeast-1.amazonaws.com
+      ECR_REPOSITORY: alfianmi-bootcamp-app
+
+    steps:
+      - name: Prepare SSH key
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+
+      - name: Add EC2 host to known_hosts
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy application
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh -i ~/.ssh/ec2_key \
+            ec2-user@"$EC2_HOST" << EOF
+              set -e
+
+              aws ecr get-login-password \
+                --region ${AWS_REGION} | \
+              docker login \
+                --username AWS \
+                --password-stdin ${ECR_REGISTRY}
+
+              docker pull \
+                ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+
+              docker rm -f bootcamp-app 2>/dev/null || true
+
+              docker run -d \
+                --name bootcamp-app \
+                --restart unless-stopped \
+                -p 80:3000 \
+                ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+
+              docker image prune -f
+          EOF
+
+  smoke-test:
+    name: Smoke Test
+    needs: deploy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run smoke test
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh "http://${EC2_HOST}/health"
+
+  release:
+    name: Create GitHub Release
+    needs: smoke-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
 
     permissions:
       contents: write
-      packages: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull published Docker image
-        run: |
-          docker pull ghcr.io/${GITHUB_REPOSITORY,,}:main
-
-      - name: Run application
-        run: |
-          docker run -d \
-            --name web2-release \
-            -p ${{ secrets.APP_PORT }}:${{ secrets.APP_PORT }} \
-            ghcr.io/${GITHUB_REPOSITORY,,}:main
-
-      - name: Run smoke test
-        run: |
-          chmod +x scripts/smoke-test.sh
-          ./scripts/smoke-test.sh http://localhost:${{ secrets.APP_PORT }}/health
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
