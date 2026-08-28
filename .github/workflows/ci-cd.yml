@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - develop
-      - feature/week3-aws-terraform
 
   pull_request:
     branches:
