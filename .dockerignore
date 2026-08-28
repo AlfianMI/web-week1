@@ -5,3 +5,8 @@ node_modules/
 npm-debug.log*
 .DS_Store
 coverage/
+infra/.terraform
+infra/terraform.tfstate
+infra/terraform.tfstate.*
+*.tfplan
+.github
