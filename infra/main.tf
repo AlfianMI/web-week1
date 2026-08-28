@@ -109,11 +109,54 @@ resource "aws_instance" "web" {
   key_name                    = var.key_pair_name
   associate_public_ip_address = true
 
+  iam_instance_profile = aws_iam_instance_profile.ec2.name
+
   user_data = file("${path.module}/user-data.sh")
 
   tags = {
     Name        = "${var.environment}-web"
     Environment = var.environment
     ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_iam_role" "ec2_ecr_pull" {
+  name        = "ec2-ecr-pull-role"
+  description = "Allow EC2 to pull container images from Amazon ECR"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Name      = "ec2-ecr-pull-role"
+    ManagedBy = "Terraform"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_ecr_pull" {
+  role       = aws_iam_role.ec2_ecr_pull.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
+}
+
+resource "aws_iam_instance_profile" "ec2" {
+  name = "ec2-ecr-pull-profile"
+  role = aws_iam_role.ec2_ecr_pull.name
+
+  tags = {
+    Name      = "ec2-ecr-pull-profile"
+    ManagedBy = "Terraform"
   }
 }
