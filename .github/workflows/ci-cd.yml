@@ -178,6 +178,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Run smoke test
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
